@@ -24,7 +24,7 @@
 
         <div class="months-grid">
           <div 
-            v-for="(month, index) in 12" 
+            v-for="(_, index) in 12" 
             :key="index"
             class="month-cell"
             :class="{ 

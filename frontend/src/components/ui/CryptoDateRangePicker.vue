@@ -111,12 +111,15 @@ const hoverDate = ref<Date | null>(null)
 // Initialize based on props
 watch(() => props.modelValue, (val) => {
   if (val && val.length === 2) {
-    const start = new Date(val[0])
-    const end = new Date(val[1])
-    if (start && end) {
-      tempStart.value = start
-      tempEnd.value = end
-      leftDate.value = new Date(start.getFullYear(), start.getMonth(), 1)
+    // Check if values are defined before creating Date objects
+    if (val[0] && val[1]) {
+      const start = new Date(val[0])
+      const end = new Date(val[1])
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        tempStart.value = start
+        tempEnd.value = end
+        leftDate.value = new Date(start.getFullYear(), start.getMonth(), 1)
+      }
     }
   }
 }, { immediate: true })

@@ -1,2 +1,11 @@
+# 部署相关配置（不随代码上传）
+**/Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+**/nginx.conf
+**/nginx/*.conf
+
+# 工作区元数据
 .shared/
 .trae/
+

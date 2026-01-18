@@ -122,7 +122,7 @@ const showAddModal = ref(false)
 
 const form = ref({
   name: '',
-  type: 'EXPENSE'
+  type: 'EXPENSE' as 'INCOME' | 'EXPENSE'
 })
 
 const filteredCategories = computed(() => {

@@ -46,11 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import CryptoMonthPicker from '@/components/ui/CryptoMonthPicker.vue'
-import { provide } from 'vue'
 
 const route = useRoute()
 const router = useRouter()

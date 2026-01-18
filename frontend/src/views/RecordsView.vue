@@ -93,9 +93,9 @@ const loading = ref(false)
 const showAddModal = ref(false)
 
 const now = new Date()
-const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
-const dateRange = ref([start, end])
+const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0] || ''
+const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0] || ''
+const dateRange = ref<string[]>([start, end])
 
 const totalBalance = computed(() => {
   let income = 0
@@ -126,10 +126,12 @@ const fetchCategories = async () => {
 }
 
 const fetchRecords = async () => {
-  if (!dateRange.value) return
+  if (!dateRange.value || dateRange.value.length !== 2) return
+  const [start, end] = dateRange.value
+  if (!start || !end) return
+  
   loading.value = true
   try {
-    const [start, end] = dateRange.value
     const res = await recordApi.getRecords(userStore.user!.id, start, end)
     records.value = res.data.data
   } catch (error) {

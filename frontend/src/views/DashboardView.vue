@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, inject, watch } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AddRecordModal from '@/components/AddRecordModal.vue'
 import * as echarts from 'echarts'
@@ -112,20 +112,17 @@ import { useUserStore } from '@/stores/user'
 import { recordApi } from '@/api/record'
 import { categoryApi } from '@/api/category'
 import { Plus } from '@element-plus/icons-vue'
-import type { Record, Category } from '@/types'
+import type { Record as TransactionRecord, Category } from '@/types'
 
 const userStore = useUserStore()
 const showAddModal = ref(false)
 const trendChart = ref<HTMLElement | null>(null)
 const pieChart = ref<HTMLElement | null>(null)
 const categories = ref<Category[]>([])
-const records = ref<Record[]>([])
+const records = ref<TransactionRecord[]>([])
 const currentMonth = ref(new Date())
 
-watch(currentMonth, () => {
-  fetchData()
-})
-
+// Watch removed from here, moved to onMounted
 // Stats
 const monthlyStats = computed(() => {
   let income = 0
@@ -143,7 +140,13 @@ const recentRecords = computed(() => {
 
 onMounted(async () => {
   if (userStore.user?.id) {
+    // Initial fetch
     await fetchData()
+    
+    // Watch for month changes
+    watch(currentMonth, async () => {
+      await fetchData()
+    })
   }
 })
 
@@ -179,7 +182,7 @@ const fetchData = async () => {
   }
 }
 
-const handleAddRecord = async (record: Partial<Record>) => {
+const handleAddRecord = async (record: Partial<TransactionRecord>) => {
   try {
     await recordApi.createRecord(record)
     await fetchData() // Refresh data
