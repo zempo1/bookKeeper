@@ -12,6 +12,12 @@
                   @change="fetchRecords"
                 />
               </div>
+              <div class="balance-display">
+                <span class="label">结余:</span>
+                <span class="value" :class="{ 'positive': totalBalance >= 0, 'negative': totalBalance < 0 }">
+                  ¥{{ totalBalance.toLocaleString() }}
+                </span>
+              </div>
             </div>
             <el-button type="primary" @click="showAddModal = true" class="add-btn">
               <el-icon class="el-icon--left"><Plus /></el-icon>记一笔
@@ -67,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AddRecordModal from '@/components/AddRecordModal.vue'
 import CryptoDateRangePicker from '@/components/ui/CryptoDateRangePicker.vue'
@@ -90,6 +96,16 @@ const now = new Date()
 const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
 const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 const dateRange = ref([start, end])
+
+const totalBalance = computed(() => {
+  let income = 0
+  let expense = 0
+  records.value.forEach(r => {
+    if (r.type === 'INCOME') income += r.amount
+    else expense += r.amount
+  })
+  return income - expense
+})
 
 onMounted(async () => {
   if (userStore.user?.id) {
@@ -200,8 +216,33 @@ const handleDelete = (row: Record) => {
 }
 
 .date-picker-wrapper {
-  width: 260px;
-}
+    width: 260px;
+  }
+  
+  .balance-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 20px;
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .label {
+      color: $text-muted;
+      font-size: 0.9rem;
+    }
+    
+    .value {
+      font-family: $font-family-display;
+      font-weight: 600;
+      font-size: 1.1rem;
+      
+      &.positive { color: #22D3EE; text-shadow: 0 0 10px rgba(34, 211, 238, 0.3); }
+      &.negative { color: #EF4444; }
+    }
+  }
 
 .custom-table {
   background: transparent !important;

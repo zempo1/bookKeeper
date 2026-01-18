@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout>
+  <DashboardLayout v-model:month="currentMonth">
     <div class="dashboard-content">
       <!-- Stats Cards -->
       <el-row :gutter="20" class="stats-grid">
@@ -37,6 +37,8 @@
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- Month Picker Removed (Moved to Layout) -->
 
       <!-- Charts Area -->
       <el-row :gutter="20" class="charts-grid">
@@ -102,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, inject, watch } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AddRecordModal from '@/components/AddRecordModal.vue'
 import * as echarts from 'echarts'
@@ -118,6 +120,11 @@ const trendChart = ref<HTMLElement | null>(null)
 const pieChart = ref<HTMLElement | null>(null)
 const categories = ref<Category[]>([])
 const records = ref<Record[]>([])
+const currentMonth = ref(new Date())
+
+watch(currentMonth, () => {
+  fetchData()
+})
 
 // Stats
 const monthlyStats = computed(() => {
@@ -143,19 +150,30 @@ onMounted(async () => {
 const fetchData = async () => {
   try {
     const userId = userStore.user!.id
-    const now = new Date()
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+    const now = currentMonth.value
+    // Use local date string construction to avoid timezone issues with toISOString()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    const startDate = formatDate(start)
+    const endDate = formatDate(end)
 
     const [catsRes, recsRes] = await Promise.all([
       categoryApi.getCategories(userId),
       recordApi.getRecords(userId, startDate, endDate)
     ])
 
-    categories.value = catsRes.data.data
-    records.value = recsRes.data.data
+  categories.value = catsRes.data.data
+  records.value = recsRes.data.data
 
-    initCharts()
+  initCharts()
   } catch (error) {
     console.error('Failed to fetch data', error)
   }
@@ -441,6 +459,28 @@ const initCharts = () => {
     transform: translateY(-2px);
     box-shadow: 0 8px 10px -3px rgba(139, 92, 246, 0.4);
     background: linear-gradient(135deg, lighten($cta-color, 5%), $cta-color) !important;
+  }
+}
+
+.month-picker-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.glass-date-picker {
+  :deep(.el-input__wrapper) {
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+  
+  :deep(.el-input__inner) {
+    color: $text-color;
   }
 }
 </style>

@@ -34,8 +34,7 @@
       <header class="top-bar card-glass">
         <h3>{{ currentPageTitle }}</h3>
         <div class="actions">
-          <button class="action-btn">🔔</button>
-          <button class="action-btn">⚙️</button>
+          <CryptoMonthPicker v-if="currentPageTitle === '仪表盘'" v-model="pickerDate" />
         </div>
       </header>
       
@@ -47,13 +46,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import CryptoMonthPicker from '@/components/ui/CryptoMonthPicker.vue'
+import { provide } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const props = defineProps<{
+  month?: Date
+}>()
+
+const emit = defineEmits(['update:month'])
+
+// Local state for picker
+const pickerDate = computed({
+  get: () => props.month || new Date(),
+  set: (val) => emit('update:month', val)
+})
 
 const currentPageTitle = computed(() => {
   const name = route.name?.toString() || 'dashboard'
@@ -200,6 +213,8 @@ const handleLogout = () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 100;
+    position: relative;
     
     h3 {
       margin: 0;
