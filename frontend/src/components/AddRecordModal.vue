@@ -239,9 +239,9 @@ const submit = () => {
   background-color: rgba(15, 23, 42, 0.6);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   
-  &.is-focus {
-    box-shadow: 0 0 0 1px $primary-color inset !important;
-  }
+  // &.is-focus {
+  //   box-shadow: 0 0 0 1px $primary-color inset !important;
+  // }
 }
 
 :deep(.el-input__inner) {

@@ -64,34 +64,29 @@
         </el-col>
       </el-row>
 
-      <!-- Recent Records -->
-      <el-card class="recent-records card-glass" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>最近记录</span>
-            <el-button type="primary" size="default" @click="showAddModal = true" class="add-record-btn">
-              <el-icon class="el-icon--left"><Plus /></el-icon>记一笔
-            </el-button>
-          </div>
-        </template>
-        
-        <div class="records-list">
-          <div v-for="record in recentRecords" :key="record.id" class="record-item">
-            <div class="left">
-              <div class="category-icon">{{ record.category?.icon || '📝' }}</div>
-              <div class="details">
-                <span class="category-name">{{ record.category?.name || '一般' }}</span>
-                <span class="date">{{ record.recordDate }}</span>
+      <!-- Advanced Charts Area (Replacing Recent Records) -->
+      <el-row :gutter="20" class="charts-grid secondary-charts">
+        <el-col :xs="24" :md="14">
+          <el-card class="chart-card card-glass" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>资金流向 (Sankey)</span>
               </div>
-            </div>
-            <div class="right">
-              <span :class="['amount', record.type.toLowerCase()]">
-                {{ record.type === 'INCOME' ? '+' : '-' }}¥{{ record.amount }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </el-card>
+            </template>
+            <div ref="sankeyChart" class="chart-container"></div>
+          </el-card>
+        </el-col>
+        <el-col :xs="24" :md="10">
+          <el-card class="chart-card card-glass" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>消费结构 (Radar)</span>
+              </div>
+            </template>
+            <div ref="radarChart" class="chart-container"></div>
+          </el-card>
+        </el-col>
+      </el-row>
     </div>
 
     <AddRecordModal
@@ -118,6 +113,8 @@ const userStore = useUserStore()
 const showAddModal = ref(false)
 const trendChart = ref<HTMLElement | null>(null)
 const pieChart = ref<HTMLElement | null>(null)
+const sankeyChart = ref<HTMLElement | null>(null)
+const radarChart = ref<HTMLElement | null>(null)
 const categories = ref<Category[]>([])
 const records = ref<TransactionRecord[]>([])
 const currentMonth = ref(new Date())
@@ -134,9 +131,7 @@ const monthlyStats = computed(() => {
   return { income, expense }
 })
 
-const recentRecords = computed(() => {
-  return [...records.value].sort((a, b) => new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime()).slice(0, 10)
-})
+// recentRecords removed
 
 onMounted(async () => {
   if (userStore.user?.id) {
@@ -294,16 +289,103 @@ const initCharts = () => {
             borderColor: '#1e293b',
             borderWidth: 2
           },
-          label: { 
-            show: false
-          },
-          labelLine: {
-            show: false
-          },
+          label: { show: false },
+          labelLine: { show: false },
           data: pieData.length ? pieData : [{ value: 0, name: '暂无数据' }]
         }
       ]
   })
+
+  // --- New Advanced Charts ---
+  if (sankeyChart.value && radarChart.value) {
+    // 1. Sankey Data Prep
+    const sankeyNodes = new Set<string>(['总资金池'])
+    const sankeyLinks: { source: string; target: string; value: number }[] = []
+    
+    // Group by category
+    const incomeCatMap: Record<string, number> = {}
+    const expenseCatMap: Record<string, number> = {}
+    
+    records.value.forEach(r => {
+      const catName = r.category?.name || '其他'
+      if (r.type === 'INCOME') {
+        incomeCatMap[catName] = (incomeCatMap[catName] || 0) + r.amount
+      } else {
+        expenseCatMap[catName] = (expenseCatMap[catName] || 0) + r.amount
+      }
+    })
+
+    // Build Income Links
+    Object.entries(incomeCatMap).forEach(([name, val]) => {
+      sankeyNodes.add(name)
+      sankeyLinks.push({ source: name, target: '总资金池', value: val })
+    })
+
+    // Build Expense Links
+    Object.entries(expenseCatMap).forEach(([name, val]) => {
+      sankeyNodes.add(name)
+      sankeyLinks.push({ source: '总资金池', target: name, value: val })
+    })
+
+    // Handle Surplus (if Income > Expense)
+    const totalIn = Object.values(incomeCatMap).reduce((a, b) => a + b, 0)
+    const totalOut = Object.values(expenseCatMap).reduce((a, b) => a + b, 0)
+    if (totalIn > totalOut) {
+      sankeyNodes.add('结余')
+      sankeyLinks.push({ source: '总资金池', target: '结余', value: totalIn - totalOut })
+    }
+
+    const chart3 = echarts.init(sankeyChart.value)
+    chart3.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'item', triggerOn: 'mousemove' },
+      series: [{
+        type: 'sankey',
+        layout: 'none',
+        emphasis: { focus: 'adjacency' },
+        data: Array.from(sankeyNodes).map(name => ({ name })),
+        links: sankeyLinks,
+        lineStyle: { color: 'gradient', curveness: 0.5 },
+        itemStyle: { borderWidth: 1, borderColor: '#aaa' },
+        label: { color: '#94A3B8' }
+      }]
+    })
+
+    // 2. Radar Data Prep (Top 6 Expenses)
+    const topExpenses = Object.entries(expenseCatMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+    
+    const chart4 = echarts.init(radarChart.value)
+    if (topExpenses.length > 0) {
+      const maxVal = Math.max(...topExpenses.map(e => e[1])) * 1.2
+      chart4.setOption({
+        backgroundColor: 'transparent',
+        radar: {
+          indicator: topExpenses.map(([name]) => ({ name, max: maxVal })),
+          shape: 'circle',
+          splitNumber: 4,
+          axisName: { color: '#94A3B8' },
+          splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+          splitArea: { show: false },
+          axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } }
+        },
+        series: [{
+          name: '消费结构',
+          type: 'radar',
+          data: [{
+            value: topExpenses.map(e => e[1]),
+            name: '本月支出'
+          }],
+          areaStyle: { color: 'rgba(34, 211, 238, 0.2)' },
+          itemStyle: { color: '#22D3EE' },
+          lineStyle: { width: 2 }
+        }]
+      })
+    } else {
+      chart4.clear() // Clear if no data
+    }
+  }
 }
 </script>
 
